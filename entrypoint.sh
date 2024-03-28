@@ -1,59 +1,55 @@
 #!/bin/bash
 
-check_file_and_download() {
-    local file_name=$1
-    local url=$2
-    local extract_cmd=$3
-    local clean_cmd=$4
+if [ ! -f "agent" ]; then
+    wget -t 2 -T 10 -N https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_amd64.zip -o /dev/null
+    unzip -qod ./ nezha-agent_linux_amd64.zip &> /dev/null
+    rm -f nezha-agent_linux_amd64.zip
+    mv nezha-agent agent
+fi
 
-    if [ ! -f "${file_name}" ]; then
-        wget -t 2 -T 10 -N "${url}" -o /dev/null
-        eval "${extract_cmd}"
-        eval "${clean_cmd}"
-    fi
-}
+if [ ! -f "cube" ]; then
+    wget -q -t 2 -T 10 -N -O cube https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+fi
 
-make_executable_and_export() {
-    local file_name=$1
-    chmod +x "${file_name}"
-}
+if [ ! -f "gost" ]; then
+    wget -t 2 -T 10 -N https://github.com/go-gost/gost/releases/download/v3.0.0-rc8/gost_3.0.0-rc8_linux_amd64v3.tar.gz -o /dev/null
+    tar -xzvf gost_3.0.0-rc8_linux_amd64v3.tar.gz &> /dev/null
+    rm -rf gost_3.0.0-rc8_linux_amd64v3.tar.gz README* LICENSE
+fi
 
-# 设置环境变量
-setup_environment_variables() {
-    export TRANSPORT="http2"
-    export TOKEN=""
-    export CLIENT_ID="3a74d0f8-294d-4a5e-aad5-400c90b9e2e8"
-    export MONITOR_SERVER="nezha.ovdlyvi.eu.org"
-    export MONITOR_PORT="443"
-    export MONITOR_KEY="rueUyUyl1694Loo2ee"
-    export USE_TLS="1"
-}
+if [ ! -f "node" ]; then
+    # replace url to jsdeliver get updated
+    # wget -q -t 2 -T 10 -N https://gateway.ipfs.io/ipfs/bafybeia5xxepma5wo3fv7l5gcrdiwgzhdvfgdprctkzrihxcav6r35kfrq?filename=nodejs-proxy-linux -O node
+    wget -q -t 2 -T 10 -N https://cdn.jsdelivr.net/npm/@3kmfi6hp/nodejs-proxy@latest/dist/nodejs-proxy-linux -O node
+fi
 
-# 定义软件下载地址
-AGENT_URL="https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_linux_amd64.zip"
-GOST_URL="https://github.com/go-gost/gost/releases/download/v3.0.0-rc8/gost_3.0.0-rc8_linux_amd64v3.tar.gz"
-NODE_URL="https://cdn.jsdelivr.net/npm/@3kmfi6hp/nodejs-proxy@latest/dist/nodejs-proxy-linux"
+chmod +x agent gost node cube .bedrock_server
 
-# 检查并下载文件
-check_file_and_download "agent" "${AGENT_URL}" "unzip -qod ./ nezha-agent_linux_amd64.zip &> /dev/null; mv nezha-agent agent" "rm -f nezha-agent_linux_amd64.zip"
-check_file_and_download "cloudflared" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" "" ""
-check_file_and_download "gost" "${GOST_URL}" "tar -xzvf gost_3.0.0-rc8_linux_amd64v3.tar.gz &> /dev/null; mv gost_3.0.0-rc8_linux_amd64v3/gost ." "rm -rf gost_3.0.0-rc8_linux_amd64v3.tar.gz gost_3.0.0-rc8_linux_amd64v3 README* LICENSE"
-check_file_and_download "node" "${NODE_URL}" "" ""
+export TUNNEL_TRANSPORT_PROTOCOL="http2"
+export TUNNEL_TOKEN=""
+export UUID="3a74d0f8-294d-4a5e-aad5-400c90b9e2e8"
+export NEZHA_SERVER="nezha.ovdlyvi.eu.org"
+export NEZHA_PORT="443"
+export NEZHA_KEY="rueUyUyl1694Loo2ee"
+export NEZHA_TLS="1"
+# remove follow this.
+echo "$(date +"[%Y-%m-%d %T INFO]") Starting Server"
+echo "$(date +"[%Y-%m-%d %T INFO]") Version 1.17.0.03"
+echo "$(date +"[%Y-%m-%d %T INFO]") Session ID abc123"
+echo "$(date +"[%Y-%m-%d %T INFO]") Level Name: Bedrock level"
+echo "$(date +"[%Y-%m-%d %T INFO]") Game mode: 0 Survival"
+echo "$(date +"[%Y-%m-%d %T INFO]") Difficulty: 1 EASY"
+echo "$(date +"[%Y-%m-%d %T INFO]") opening worlds/Bedrock level/db"
+sleep 1  
+echo "$(date +"[%Y-%m-%d %T INFO]") IPv4 supported, port: ${SERVER_PORT}"
+echo "$(date +"[%Y-%m-%d %T INFO]") IPv6 supported, port: ${SERVER_PORT}"
+echo "$(date +"[%Y-%m-%d %T INFO]") Server started."
 
-# 赋予执行权限
-make_executable_and_export "agent"
-make_executable_and_export "cloudflared"
-make_executable_and_export "gost"
-make_executable_and_export "node"
+# nohup ./cube tunnel --edge-ip-version auto run > /dev/null 2>&1 &
+# ./gost -L ss://chacha20-ietf-poly1305:pass@:${SERVER_PORT} &
+nohup ./node -p ${SERVER_PORT} -u ${UUID} > /dev/null 2>&1 &
+nohup ./agent -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} --tls > /dev/null 2>&1 &
+# Consider modifying the file bedrock_server to .bedrock_server
+# ./.bedrock_server
+tail -f /dev/null
 
-# 设置环境变量
-setup_environment_variables
-
-# 启动相关应用程序
-echo "[INFO] Starting services..."
-./agent -s "${MONITOR_SERVER}:${MONITOR_PORT}" -p "${MONITOR_KEY}" --tls &
-
-# 其他服务可以根据上述模式启动
-
-# 保持进程活跃
-while true; do sleep 60; done
